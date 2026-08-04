@@ -37,8 +37,10 @@ See [`.env.example`](.env.example) for the limits. Every one has a default.
 2. [`_lib/formats.js`](_lib/formats.js) picks the format: the content decides,
    the file name is the fallback. `report.docx` may be a PDF. CSV has no
    signature and can only go by name.
-3. [`_lib/convert.js`](_lib/convert.js) converts it in a child process.
-4. The Markdown always comes back as a file. Under `CAPTION_LIMIT` characters
+3. [`_lib/zipGuard.js`](_lib/zipGuard.js) reads what a ZIP container claims
+   to hold and refuses the absurd — see below.
+4. [`_lib/convert.js`](_lib/convert.js) converts it in a child process.
+5. The Markdown always comes back as a file. Under `CAPTION_LIMIT` characters
    it is also the caption, so a two-line CSV needs no download.
 
 The parser is Rust behind a native binding, and its input is a binary file
@@ -48,6 +50,26 @@ see it, hence the child process: `convert()` returns `{ markdown }` or
 
 The caption carries no `parse_mode` — it is Markdown from someone's document,
 and parsing it would fail the send on the first stray asterisk.
+
+### The zip guard
+
+Office formats are ZIP archives, and a 98 KB `.docx` can carry 100 MB of
+markup. The parser holds all of it at once — measured at 940 MB of RSS, in
+under a second, on a box with 1.2 GB free. Neither existing limit helps:
+`MAX_MARKDOWN_BYTES` only counts what has already been written to stdout, and
+`CONVERT_TIMEOUT_MS` never fires because the bomb is fast. anydoc has a guard
+of its own, but it counts XML nodes, so it misses few nodes holding enormous
+text.
+
+So a ZIP is opened before the parser sees it — the central directory declares
+every entry's uncompressed size, which reads in microseconds without
+decompressing anything. Markup gets the tighter ceiling (`MAX_XML_BYTES`,
+40 MB); media only counts toward `MAX_UNCOMPRESSED_BYTES`, since images are
+stored, not parsed into a tree. Zip64 is refused rather than parsed.
+
+A liar can still declare small and deliver large. The child process, the
+output cap and the timeout are what remain for that, which is what they are
+for.
 
 ## User-facing text
 

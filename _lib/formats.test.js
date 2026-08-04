@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { detectFormat, extensionOf, markdownName } from './formats.js';
+import { detectFormat, extensionOf, markdownName, printable } from './formats.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -49,4 +49,12 @@ test('the name stays a single path segment', () => {
 
 test('a very long name is cut short', () => {
   assert.ok(markdownName('a'.repeat(300) + '.docx').length <= 63);
+});
+
+test('control characters are stripped from a name', () => {
+  // grammY refuses to send a filename holding a newline, and a newline in the
+  // logs forges lines.
+  assert.equal(markdownName('evil\r\nname.docx'), 'evilname.md');
+  assert.equal(printable('a\u0000b\u001fc'), 'abc');
+  assert.ok(!markdownName('a\nb.docx').includes('\n'));
 });

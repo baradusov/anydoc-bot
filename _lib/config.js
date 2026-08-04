@@ -16,6 +16,14 @@ export const CONVERT_TIMEOUT_MS =
 
 export const MAX_CONCURRENT = Number(process.env.MAX_CONCURRENT) || 4;
 
+// Ceilings on what a ZIP container says it holds, checked before the parser
+// sees it. Markup is what turns into memory, so it has the tighter one; media
+// is only stored. See zipGuard.js.
+export const MAX_XML_BYTES = Number(process.env.MAX_XML_BYTES) || 40 * 1024 * 1024;
+
+export const MAX_UNCOMPRESSED_BYTES =
+  Number(process.env.MAX_UNCOMPRESSED_BYTES) || 200 * 1024 * 1024;
+
 // The Markdown always comes back as a file, and short Markdown rides along in
 // the caption so it can be read without downloading anything. A caption caps
 // at 1024 characters; the rest is room for being wrong about that.
@@ -68,6 +76,8 @@ export const FAILURE_REPLIES = {
   empty: 'I opened this file, but there is no text inside it 😞',
   too_large:
     'This document has too much text to send 🙅 Please try a smaller one.',
+  too_complex:
+    'This file is very small outside, but very big inside. I cannot open it 🙅',
   timeout: 'This file takes too long to read 😞',
   download_failed:
     'I could not get your file from Telegram. Please send it again 😞',

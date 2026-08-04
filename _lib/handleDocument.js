@@ -1,7 +1,8 @@
 import { MAX_FILE_BYTES, TIMEOUT_MS } from './config.js';
 import { convert } from './convert.js';
-import { detectFormat, extensionOf, markdownName } from './formats.js';
+import { detectFormat, extensionOf, markdownName, printable } from './formats.js';
 import { download } from './download.js';
+import { checkZip } from './zipGuard.js';
 
 /**
  * The whole path from an incoming document to Markdown.
@@ -33,6 +34,13 @@ export const handleDocument = async (ctx) => {
   // Reported as the extension when nothing was recognised: that is the only
   // way to learn which kinds of file people keep sending in vain.
   if (!format) return { reason: 'unsupported', format: extension };
+
+  const bomb = checkZip(bytes);
+
+  if (bomb) {
+    console.log(`Refused ${printable(document.file_name)}: ${bomb}`);
+    return { reason: bomb, format };
+  }
 
   const { markdown, reason } = await convert(bytes, format);
 

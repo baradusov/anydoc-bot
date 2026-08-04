@@ -18,11 +18,17 @@ export const detectFormat = (bytes, fileName) =>
   formatFromBytes(bytes.subarray(0, SNIFF_BYTES)) ??
   (fileName ? formatFromExtension(extensionOf(fileName) ?? '') : null);
 
+// A file name is chosen by whoever sent the file, and it ends up in the logs
+// and in an outgoing form header. Control characters belong in neither: a
+// newline forges log lines, and grammY refuses to send a name containing one.
+export const printable = (text) =>
+  String(text ?? '').replace(/[\u0000-\u001f\u007f]/g, '');
+
 export const markdownName = (fileName) => {
   const base = String(fileName || 'document').replace(/\.[^./\\]+$/, '');
   // The name travels back to Telegram as a filename, so keep it to one path
   // segment and a sane length.
-  const safe = base.replace(/[/\\]/g, '-').trim().slice(0, 60);
+  const safe = printable(base).replace(/[/\\]/g, '-').trim().slice(0, 60);
 
   return `${safe || 'document'}.md`;
 };

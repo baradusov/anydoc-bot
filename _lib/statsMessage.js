@@ -17,6 +17,7 @@ const REASON_LABELS = {
   empty: 'No text inside',
   too_big: 'Over the 20 MB download limit',
   too_large: 'Markdown too big to send',
+  too_complex: 'Small file, huge insides',
   timeout: 'Took too long',
   download_failed: 'Telegram would not hand it over',
   worker_crashed: 'Reader died on it',

@@ -9,6 +9,7 @@ import {
   FAILURE_REPLIES,
 } from './_lib/config.js';
 import { handleDocument } from './_lib/handleDocument.js';
+import { printable } from './_lib/formats.js';
 import { startProgress, finishWithDocument, failWith } from './_lib/progress.js';
 import { record } from './_lib/stats.js';
 import { buildStatsMessage } from './_lib/statsMessage.js';
@@ -92,7 +93,7 @@ bot.on('message:document', async (ctx) => {
 
   const { file_name: name, file_size: bytes } = ctx.message.document;
 
-  console.log(`Converting ${name} (${bytes} bytes) for ${ctx.chat.id}`);
+  console.log(`Converting ${printable(name)} (${bytes} bytes) for ${ctx.chat.id}`);
 
   const progress = startProgress(ctx, BOT_REPLIES.working);
   const startedAt = Date.now();
@@ -104,7 +105,7 @@ bot.on('message:document', async (ctx) => {
   const timing = { bytes, ms: Date.now() - startedAt, queueMs: queuedMs };
 
   if (!markdown) {
-    console.log(`No markdown for ${name}. Reason: ${reason}`);
+    console.log(`No markdown for ${printable(name)}. Reason: ${reason}`);
     record(ctx.chat.id, format, 'failed', reason, timing);
     finishAttempt(ctx.update.update_id);
 
@@ -115,7 +116,7 @@ bot.on('message:document', async (ctx) => {
     );
   }
 
-  console.log(`Converted ${name} → ${markdown.length} characters of markdown`);
+  console.log(`Converted ${printable(name)} → ${markdown.length} characters of markdown`);
   record(ctx.chat.id, format, 'markdown', null, timing);
   finishAttempt(ctx.update.update_id);
 
