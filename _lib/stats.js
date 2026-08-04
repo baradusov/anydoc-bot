@@ -41,6 +41,15 @@ const clean = (format) => {
 
 const round = (value) => (value == null ? null : Math.round(value));
 
+// The admin chat is where the bot gets tested, and testing is not usage. It
+// is dropped here rather than filtered in each query, so a query added later
+// cannot forget about it.
+const isAdmin = (chatId) => {
+  const admin = process.env.ADMIN_CHAT_ID;
+
+  return Boolean(admin) && String(chatId) === String(admin);
+};
+
 export const record = (
   chatId,
   format,
@@ -48,6 +57,8 @@ export const record = (
   reason = null,
   { bytes = null, ms = null, queueMs = null } = {}
 ) => {
+  if (isAdmin(chatId)) return;
+
   try {
     insert.run(
       Number(chatId),

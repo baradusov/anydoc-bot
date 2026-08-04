@@ -117,6 +117,27 @@ test('someone active in both periods is returning', () => {
   assert.equal(returning(15), 1);
 });
 
+test('the admin chat is not recorded', () => {
+  const before = summary(30).requests;
+
+  process.env.ADMIN_CHAT_ID = '4242';
+  record(4242, 'docx', 'markdown');
+  record(4243, 'docx', 'markdown');
+  delete process.env.ADMIN_CHAT_ID;
+
+  assert.equal(summary(30).requests, before + 1);
+  assert.equal(topUsers(30).some((u) => u.chatId === 4242), false);
+});
+
+test('with no admin set, everyone is recorded', () => {
+  const before = summary(30).requests;
+
+  delete process.env.ADMIN_CHAT_ID;
+  record(4244, 'docx', 'markdown');
+
+  assert.equal(summary(30).requests, before + 1);
+});
+
 test('recording never takes the bot down', () => {
   assert.doesNotThrow(() => record(undefined, undefined, 'markdown'));
 });

@@ -103,6 +103,10 @@ slowestFormats(30);  // [{ format, count, avgMs }, …]
 A format is often the extension off a name a stranger chose, so only
 `^[a-z0-9]{1,10}$` reaches the table. A test guards this.
 
+`ADMIN_CHAT_ID` is never recorded — that chat is where the bot gets tested,
+and testing is not usage. It is dropped in `record()` rather than filtered in
+each query, so a query added later cannot forget about it.
+
 ### The /stats command
 
 `/stats` sends the whole picture back as tables, using Bot API rich messages
