@@ -1,6 +1,10 @@
 # Changelog
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.1.1
+* Refuse a ZIP that declares far more inside than its size suggests
+* Strip control characters from file names before logging or sending them
+
 ## 0.1.0
 * Convert documents to Markdown with @firecrawl/anydoc
 * Send the result as an .md file, with short text in the caption

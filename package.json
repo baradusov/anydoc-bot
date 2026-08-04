@@ -1,6 +1,6 @@
 {
   "name": "anydoc-bot",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Bot turns any office document into Markdown",
   "main": "index.js",
   "type": "module",
