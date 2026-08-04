@@ -5,7 +5,10 @@ module.exports = {
     {
       name: 'anydoc',
       script: 'index.js',
-      instances: 1,
+      // Fork, not cluster. `instances` alone puts pm2 in cluster mode, where a
+      // reload starts the replacement before retiring the old process — and
+      // two processes polling one bot token get 409 Conflict from Telegram.
+      exec_mode: 'fork',
       autorestart: true,
       // A spreadsheet unfolding into Markdown is the one thing here that can
       // eat memory; restart rather than let the box swap.
