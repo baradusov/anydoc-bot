@@ -1,6 +1,9 @@
 # Changelog
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.1.3
+* Keep the admin chat out of the statistics
+
 ## 0.1.2
 * Run under pm2 in fork mode, so a deploy cannot poll the bot token twice
 
