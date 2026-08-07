@@ -1,7 +1,7 @@
 # Changelog
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.2.0
 * Read pictures, photos and scanned PDFs with @llamaindex/liteparse
 * Accept photos
 * Queue OCR separately from document conversion
