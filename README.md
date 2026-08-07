@@ -1,92 +1,99 @@
 # Anydoc Bot
 
-Telegram bot that turns office documents into Markdown. Send a file, get an
-`.md` file back, with the text in the caption when it is short.
+Telegram bot. Send a file, get Markdown back.
 
-Conversion is [`@firecrawl/anydoc`](https://github.com/firecrawl/anydoc) — a
-Rust parser behind a native binding. No external service, no API key, no
-system packages. Word, PowerPoint, Excel, OpenDocument, PDF, RTF, EPUB, CSV.
+- Documents → [`@firecrawl/anydoc`](https://github.com/firecrawl/anydoc).
+  Word, PowerPoint, Excel, OpenDocument, PDF, RTF, EPUB, CSV.
+- Pictures, photos, scanned PDFs → [`@llamaindex/liteparse`](https://github.com/run-llama/liteparse).
+  PNG, JPEG, GIF, BMP, TIFF. English and Russian.
+
+Both are Rust behind a native binding. No external service, no API key, no
+system packages.
 
 ## Requirements
 
-- Node.js >= 22.5.0 — `node:sqlite` for the statistics, anydoc wants >= 20
-- Nothing else. `npm ci` pulls a prebuilt binary for the platform
+- Node.js >= 22.5.0
+- Outbound access to GitHub on the first OCR run, for the language data
 
-anydoc is young — 0.1.3, published 4 August 2026 — so the version is pinned
-exactly. Read its changelog before moving it.
+Versions are pinned exactly. Read the upstream changelog before moving them.
 
-## Environment Variables
+## Development
 
+```bash
+npm install
+NODE_ENV=development npm start   # uses BOT_TOKEN_DEV
+npm test                         # node:test, no runner
 ```
-BOT_TOKEN=<telegram_bot_token>
-BOT_TOKEN_DEV=<telegram_bot_token_for_dev>
-ADMIN_CHAT_ID=<chat that /stats answers>
-```
 
-See [`.env.example`](.env.example) for the limits. Every one has a default.
+## Configuration
 
-`.env` is loaded from [`_lib/env.js`](_lib/env.js), imported first in
-`index.js`. ESM evaluates imports before the importing module's body, so
-`dotenv.config()` written into `index.js` would run after `config.js` had read
-`process.env`.
+`BOT_TOKEN`, `BOT_TOKEN_DEV`, `ADMIN_CHAT_ID`, and about twenty limits — all in
+[`.env.example`](.env.example), all with defaults.
 
-## How it works
+## Path of a file
 
-1. `file_size` is checked against 20 MB — Telegram will not hand a bot a
-   bigger file through `getFile`. A local Bot API server would raise it to 2 GB.
-2. [`_lib/formats.js`](_lib/formats.js) picks the format: the content decides,
-   the file name is the fallback. `report.docx` may be a PDF. CSV has no
-   signature and can only go by name.
-3. [`_lib/zipGuard.js`](_lib/zipGuard.js) reads what a ZIP container claims
-   to hold and refuses the absurd — see below.
-4. [`_lib/convert.js`](_lib/convert.js) converts it in a child process.
-5. The Markdown always comes back as a file. Under `CAPTION_LIMIT` characters
-   it is also the caption, so a two-line CSV needs no download.
+1. `file_size` against 20 MB — Telegram will not serve a bot more through
+   `getFile`.
+2. [`formats.js`](_lib/formats.js) names the format from the content, falling
+   back to the file name.
+3. [`zipGuard.js`](_lib/zipGuard.js) / [`imageGuard.js`](_lib/imageGuard.js)
+   refuse what declares too much.
+4. [`convert.js`](_lib/convert.js) or [`ocr.js`](_lib/ocr.js) runs it in a
+   child process.
+5. Markdown comes back as a file, and as the caption when under
+   `CAPTION_LIMIT`.
 
-The parser is Rust behind a native binding, and its input is a binary file
-from a stranger. A panic there takes the process down where `bot.catch` cannot
-see it, hence the child process: `convert()` returns `{ markdown }` or
-`{ reason }` and never throws. `MAX_CONCURRENT` caps how many run at once.
+A file reaches OCR when it is a picture, or a PDF anydoc found no text in.
+`isComplex()` confirms there is no text layer before OCR starts.
 
-The caption carries no `parse_mode` — it is Markdown from someone's document,
-and parsing it would fail the send on the first stray asterisk.
+## Two queues
 
-### The zip guard
+| | documents | pictures |
+|---|---|---|
+| module | `convert.js` | `ocr.js` |
+| at once | `MAX_CONCURRENT` (4) | `OCR_MAX_CONCURRENT` (1) |
+| queue | unbounded | `OCR_QUEUE_LIMIT` (3), then `ocr_busy` |
+| per file | milliseconds | ~2.3 s a page |
 
-Office formats are ZIP archives, and a 98 KB `.docx` can carry 100 MB of
-markup. The parser holds all of it at once — measured at 940 MB of RSS, in
-under a second, on a box with 1.2 GB free. Neither existing limit helps:
-`MAX_MARKDOWN_BYTES` only counts what has already been written to stdout, and
-`CONVERT_TIMEOUT_MS` never fires because the bomb is fast. anydoc has a guard
-of its own, but it counts XML nodes, so it misses few nodes holding enormous
-text.
+Separate, so a CSV never waits behind a scan.
 
-So a ZIP is opened before the parser sees it — the central directory declares
-every entry's uncompressed size, which reads in microseconds without
-decompressing anything. Markup gets the tighter ceiling (`MAX_XML_BYTES`,
-40 MB); media only counts toward `MAX_UNCOMPRESSED_BYTES`, since images are
-stored, not parsed into a tree. Zip64 is refused rather than parsed.
+## Guards
 
-A liar can still declare small and deliver large. The child process, the
-output cap and the timeout are what remain for that, which is what they are
-for.
+Everything a stranger sends is hostile input to a native parser.
 
-## User-facing text
+| guard | limit | what it stops |
+|---|---|---|
+| `zipGuard.js` | `MAX_XML_BYTES`, `MAX_UNCOMPRESSED_BYTES` | 98 KB docx holding 100 MB of markup |
+| `imageGuard.js` | `OCR_MAX_PIXELS` | 380 KB PNG declaring 20000x20000 |
+| `ocrWorker.js` | `OCR_MAX_PIXELS` | 13 KB PDF with a 900 megapixel page |
+| `ocr.js` watchdog | `OCR_MAX_RSS_MB` | anything the above missed |
+| child process | — | a panic in Rust |
+| timeouts, output caps | `*_TIMEOUT_MS`, `MAX_MARKDOWN_BYTES` | a slow or endless file |
 
-Every string the user sees is in `BOT_REPLIES` and `FAILURE_REPLIES` in
-[`_lib/config.js`](_lib/config.js). The audience reads English as a second
-language: short sentences, common words, no idioms, terms spelled out. Does
-not apply to this file, the comments or the logs.
+## Output notes
+
+Appended to the Markdown, not sent as a message:
+
+- pages skipped past `OCR_MAX_PAGES`
+- average Tesseract confidence below `OCR_MIN_CONFIDENCE`
+
+## Languages
+
+`OCR_LANGUAGE` is `eng+rus`. A second language costs ~4% and loses nothing.
+
+**Left-to-right only.** liteparse places OCR results by position and applies no
+bidi, so right-to-left comes back reversed: `شهادة عمل` reads `عمل شهادة`. 80%
+of words correct, 5% in the right place. The text layer path is unaffected.
+
+Language data is not bundled — the first read downloads it into
+`~/.tesseract-rs/tessdata`.
 
 ## Statistics
 
-Every handled document is recorded in SQLite at `data/stats.db` through
-`node:sqlite` — see [`_lib/stats.js`](_lib/stats.js). The table is created on
-first run. Override the location with `STATS_DB_PATH`.
-
-A row is a chat id, a format, an outcome (`markdown`, `failed`,
-`rate_limited`), a reason when it failed, the file size and how long the
-person waited. The file is never written to disk and never stored.
+SQLite at `data/stats.db` via `node:sqlite`, see [`stats.js`](_lib/stats.js).
+Override the location with `STATS_DB_PATH`. One row per file: chat id, format,
+outcome, reason, size, timings. The file itself is never written to disk or
+stored.
 
 ```js
 import { summary, topUsers, topFormats, outcomes, reasons,
@@ -100,53 +107,29 @@ sizes(30);           // the same, over file size in bytes
 slowestFormats(30);  // [{ format, count, avgMs }, …]
 ```
 
-A format is often the extension off a name a stranger chose, so only
-`^[a-z0-9]{1,10}$` reaches the table. A test guards this.
+`/stats [days]` answers `ADMIN_CHAT_ID` only, and that chat is never recorded.
 
-`ADMIN_CHAT_ID` is never recorded — that chat is where the bot gets tested,
-and testing is not usage. It is dropped in `record()` rather than filtered in
-each query, so a query added later cannot forget about it.
+## Gotchas
 
-### The /stats command
-
-`/stats` sends the whole picture back as tables, using Bot API rich messages
-(`sendRichMessage`). Takes an optional period: `/stats 7`. It is not declared
-in the command menu and answers only `ADMIN_CHAT_ID`; everyone else gets
-silence. With `ADMIN_CHAT_ID` unset it answers nobody.
-
-Two things worth knowing if you touch it:
-
-- grammY's convenience methods are positional — `api.sendRichMessage(chatId, message)`.
-  The object form lives on `api.raw`; passing an object to the convenience
-  method silently sends an empty rich message.
-- The message is built from typed blocks, never the `html` or `markdown`
-  fields, so a filename cannot smuggle in markup.
-
-## Tests
-
-```bash
-npm test
-```
-
-`node:test`, no runner. Conversion is covered end to end against a real
-`.docx` in [`_lib/__fixtures__`](_lib/__fixtures__) — through the child
-process — including a broken file, an unknown one, a timeout and an oversized
-result. Bot handlers are not covered.
-
-The fixture is a hand-built minimal OOXML package. If you rebuild it, keep
-`xml:space="preserve"` on every `<w:t>` with meaningful leading or trailing
-space; without it that space is not significant and words glue to their bold
-neighbours.
-
-## Development
-
-```bash
-npm install
-NODE_ENV=development npm start
-```
-
-Uses `BOT_TOKEN_DEV` when `NODE_ENV=development`. Two bots must never poll the
-same token.
+- Two processes must never poll one bot token. Hence pm2 fork mode, not
+  cluster.
+- The caption carries no `parse_mode`. It is a stranger's Markdown; one stray
+  asterisk would fail the send.
+- `/stats` uses typed blocks, never the `html` or `markdown` fields, so a
+  filename cannot smuggle in markup.
+- grammY convenience methods are positional: `api.sendRichMessage(chatId, msg)`.
+  Passing an object sends an empty message, silently. The object form is on
+  `api.raw`.
+- `ulimit -v` cannot cap the OCR worker: V8 reserves its address space at
+  startup and dies before reading the file. Hence polling `/proc`.
+- The OCR memory watchdog alone is too slow for a picture bomb — 920 MB in
+  454 ms. The header check is the real defence.
+- `.env` is loaded in [`env.js`](_lib/env.js), imported first in `index.js`.
+  ESM evaluates imports before the importing module body.
+- The `.docx` fixture needs `xml:space="preserve"` on every `<w:t>` with
+  meaningful edge space, or words glue to their bold neighbours.
+- WebP is not accepted: its dimensions sit behind three chunk layouts, and
+  anything unmeasurable is refused.
 
 ## Production
 

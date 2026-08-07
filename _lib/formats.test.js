@@ -3,7 +3,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { detectFormat, extensionOf, markdownName, printable } from './formats.js';
+import {
+  detectFormat,
+  extensionOf,
+  imageFormat,
+  markdownName,
+  printable,
+} from './formats.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -57,4 +63,34 @@ test('control characters are stripped from a name', () => {
   assert.equal(markdownName('evil\r\nname.docx'), 'evilname.md');
   assert.equal(printable('a\u0000b\u001fc'), 'abc');
   assert.ok(!markdownName('a\nb.docx').includes('\n'));
+});
+
+test('a picture is recognised by its signature', () => {
+  assert.equal(imageFormat(readFileSync(join(__dirname, '__fixtures__', 'scan.png'))), 'png');
+  assert.equal(imageFormat(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00])), 'jpeg');
+  assert.equal(imageFormat(Buffer.from([0x49, 0x49, 0x2a, 0x00])), 'tiff');
+});
+
+test('what is not a picture is not called one', () => {
+  assert.equal(imageFormat(Buffer.from('%PDF-1.7\n')), null);
+  assert.equal(imageFormat(Buffer.from('RIFF____AVI LIST', 'latin1')), null);
+  assert.equal(imageFormat(Buffer.from('')), null);
+});
+
+test('a format whose size cannot be checked is not accepted', () => {
+  // WebP hides its dimensions behind three different chunk layouts, and
+  // imageGuard.js has to read a size out of everything that gets through.
+  assert.equal(imageFormat(Buffer.from('RIFF____WEBPVP8 ', 'latin1')), null);
+});
+
+test('a picture format is a shape the statistics will keep', () => {
+  // stats.js drops anything that is not a bare extension, so a name with a
+  // dash or a space in it would vanish from every count.
+  for (const bytes of [
+    readFileSync(join(__dirname, '__fixtures__', 'scan.png')),
+    Buffer.from([0xff, 0xd8, 0xff]),
+    Buffer.from([0x47, 0x49, 0x46, 0x38]),
+  ]) {
+    assert.match(imageFormat(bytes), /^[a-z0-9]{1,10}$/);
+  }
 });

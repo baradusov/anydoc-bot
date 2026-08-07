@@ -8,7 +8,7 @@ import {
   CAPTION_LIMIT,
   FAILURE_REPLIES,
 } from './_lib/config.js';
-import { handleDocument } from './_lib/handleDocument.js';
+import { handleDocument, handlePhoto } from './_lib/handleDocument.js';
 import { printable } from './_lib/formats.js';
 import { startProgress, finishWithDocument, failWith } from './_lib/progress.js';
 import { record } from './_lib/stats.js';
@@ -83,15 +83,18 @@ bot.command('stats', async (ctx) => {
   return ctx.api.sendRichMessage(ctx.chat.id, buildStatsMessage(period));
 });
 
-bot.on('message:document', async (ctx) => {
+/**
+ * Everything an incoming file goes through, whichever way it arrived: the
+ * gates, the notice, the reply and the row in the statistics. Only the reading
+ * differs between a document and a photo.
+ */
+const serve = async (ctx, read, { name, bytes }) => {
   if (process.env.BOT_STATUS === 'disabled') {
     return ctx.reply(BOT_REPLIES.limit);
   }
 
   if (!passesRateLimit(ctx)) return;
   if (!survivesRetries(ctx)) return;
-
-  const { file_name: name, file_size: bytes } = ctx.message.document;
 
   console.log(`Converting ${printable(name)} (${bytes} bytes) for ${ctx.chat.id}`);
 
@@ -100,7 +103,9 @@ bot.on('message:document', async (ctx) => {
   const queuedMs = ctx.message.date
     ? Math.max(0, startedAt - ctx.message.date * 1000)
     : null;
-  const { markdown, filename, format, reason } = await handleDocument(ctx);
+  const { markdown, filename, format, reason } = await read(ctx, {
+    onPicture: () => progress.announce(BOT_REPLIES.workingOnPicture),
+  });
   const status = await progress.settle();
   const timing = { bytes, ms: Date.now() - startedAt, queueMs: queuedMs };
 
@@ -132,13 +137,21 @@ bot.on('message:document', async (ctx) => {
     filename,
     caption
   );
-});
+};
+
+bot.on('message:document', (ctx) =>
+  serve(ctx, handleDocument, {
+    name: ctx.message.document.file_name,
+    bytes: ctx.message.document.file_size,
+  })
+);
 
 bot.on('message:photo', (ctx) => {
-  record(ctx.chat.id, null, 'failed', 'photo');
+  const sizes = ctx.message.photo;
 
-  return ctx.reply(BOT_REPLIES.photo, {
-    reply_to_message_id: ctx.message.message_id,
+  return serve(ctx, handlePhoto, {
+    name: 'photo',
+    bytes: sizes[sizes.length - 1].file_size,
   });
 });
 

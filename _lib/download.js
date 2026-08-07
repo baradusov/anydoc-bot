@@ -5,8 +5,8 @@ import { BOT_TOKEN } from './config.js';
  * fetched from a different host. grammY has a plugin for this, but it is four
  * lines and one less dependency to keep an eye on.
  */
-export const download = async (ctx, signal) => {
-  const { file_path: path } = await ctx.getFile();
+export const download = async (ctx, signal, fileId = null) => {
+  const { file_path: path } = fileId ? await ctx.api.getFile(fileId) : await ctx.getFile();
 
   const response = await fetch(
     `https://api.telegram.org/file/bot${BOT_TOKEN}/${path}`,

@@ -1,6 +1,17 @@
 # Changelog
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+* Read pictures, photos and scanned PDFs with @llamaindex/liteparse
+* Accept photos
+* Queue OCR separately from document conversion
+* Refuse pictures past the OCR queue limit
+* Kill an OCR worker over the memory limit
+* Read Russian as well as English
+* Refuse a picture or page declaring more pixels than the limit
+* Note low confidence and skipped pages in the output
+* Show a separate progress message while reading a picture
+
 ## 0.1.3
 * Keep the admin chat out of the statistics
 
