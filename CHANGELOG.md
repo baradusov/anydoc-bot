@@ -1,6 +1,9 @@
 # Changelog
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.2.1
+* Point the news channel at @unary_bots
+
 ## 0.2.0
 * Read pictures, photos and scanned PDFs with @llamaindex/liteparse
 * Accept photos
