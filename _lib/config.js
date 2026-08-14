@@ -92,11 +92,11 @@ You can also send a photo, a picture file (jpg, png), or a PDF made from photos.
 In pictures I read English and Russian. Other languages come back wrong, so I do not try.
 
 <b>Help and news</b>
-Something is not working? Write to @baradusov. News about the bot: @baradusov_support.
+Something is not working? Write to @baradusov. News about the bot: @unary_bots.
 
 <b>Commands</b>
 /help — show this message`,
-  limit: 'The bot is off for now. See @baradusov_support for news.',
+  limit: 'The bot is off for now. See @unary_bots for news.',
   working: '⏳ Reading your document…',
   workingOnPicture:
     '⏳ This one is a picture, so I read the text letter by letter. It takes longer. Please wait.',
