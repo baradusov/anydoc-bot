@@ -117,7 +117,9 @@ const serve = async (ctx, read, { name, bytes }) => {
     return failWith(
       ctx,
       status,
-      FAILURE_REPLIES[reason] || FAILURE_REPLIES.worker_crashed
+      (reason === 'unsupported' && /^html?$/.test(format) && FAILURE_REPLIES.html) ||
+        FAILURE_REPLIES[reason] ||
+        FAILURE_REPLIES.worker_crashed
     );
   }
 
@@ -157,6 +159,14 @@ bot.on('message:photo', (ctx) => {
 
 bot.on('message', (ctx) => {
   if (ctx.chat.type !== 'private') return;
+
+  const entities = [...(ctx.message.entities || []), ...(ctx.message.caption_entities || [])];
+
+  if (entities.some((e) => e.type === 'url' || e.type === 'text_link')) {
+    record(ctx.chat.id, null, 'failed', 'link');
+
+    return ctx.reply(BOT_REPLIES.link);
+  }
 
   record(ctx.chat.id, null, 'failed', 'not_a_document');
 

@@ -93,6 +93,7 @@ In pictures I read English and Russian. Other languages come back wrong, so I do
 
 <b>Help and news</b>
 Something is not working? Write to @baradusov. News about the bot: @unary_bots.
+A web page as PDF: @html_to_pdf_bot
 
 <b>Commands</b>
 /help — show this message`,
@@ -102,6 +103,7 @@ Something is not working? Write to @baradusov. News about the bot: @unary_bots.
     '⏳ This one is a picture, so I read the text letter by letter. It takes longer. Please wait.',
   noDocument:
     'Please send your document as a <b>file</b>. I will take the text out of it. See /help for the files I can read.',
+  link: "That is a link 🙂 For a web page as PDF, send it to @html_to_pdf_bot",
   tooBig: 'This file is too big 🙅 I can only take files up to 20 MB.',
   gaveUp:
     'I tried to read this file many times, but it did not work 🙅 I will stop now. Sorry!',
@@ -110,6 +112,7 @@ Something is not working? Write to @baradusov. News about the bot: @unary_bots.
 };
 
 export const FAILURE_REPLIES = {
+  html: "I cannot read web pages 🙅 Send this file to @html_to_pdf_bot, it makes a PDF from it.",
   unsupported: 'I cannot read this kind of file 🙅 See /help for the files I can read.',
   needs_ocr:
     'This PDF is made from photos. It has pictures of text, not real text, so I cannot read it 😞',

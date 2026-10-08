@@ -22,6 +22,7 @@ const REASON_LABELS = {
   download_failed: 'Telegram would not hand it over',
   worker_crashed: 'Reader died on it',
   not_a_document: 'Not a file at all',
+  link: 'Sent a link',
   photo: 'Sent as a photo',
   rate_limited: 'Sent too fast',
   poison_update: 'Kept breaking the bot, skipped',
