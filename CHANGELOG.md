@@ -1,6 +1,9 @@
 # Changelog
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.2.2
+* Point links and web pages to @html_to_pdf_bot
+
 ## 0.2.1
 * Point the news channel at @unary_bots
 
