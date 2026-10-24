@@ -25,7 +25,6 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            source ~/.asdf/asdf.sh
             cd ~/www/anydoc-bot/app
             git pull origin master
             npm ci --omit=dev

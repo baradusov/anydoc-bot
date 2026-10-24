@@ -153,7 +153,8 @@ pm2 status           # Check status
 ### Manual deploy
 
 ```bash
-ssh yo
+ssh services
+sudo -iu baradusov
 cd ~/www/anydoc-bot/app
 git pull
 npm ci --omit=dev
